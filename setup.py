@@ -11,7 +11,7 @@ except ImportError:
 
 setup(
     name='hg-git',
-    version='0.4.0',
+    version='0.4.0-moz2',
     author='Scott Chacon',
     maintainer='Augie Fackler',
     maintainer_email='durin42@gmail.com',
@@ -21,6 +21,8 @@ setup(
 This extension lets you communicate (push and pull) with a Git server.
 This way you can use Git hosting for your project or collaborate with a
 project that is in Git.  A bridger of worlds, this plugin be.
+
+moz2: patch for bug 835202, revert email munging
     """.strip(),
     keywords='hg git mercurial',
     license='GPLv2',
