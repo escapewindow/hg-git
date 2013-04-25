@@ -46,6 +46,8 @@ RE_GIT_PROGRESS = re.compile('\((\d+)/(\d+)\)')
 
 RE_AUTHOR_FILE = re.compile('\s*=\s*')
 
+RE_HGGIT_COMMITTER_LINE = re.compile(' \d+ -?\d+$')
+
 class GitProgress(object):
     """convert git server progress strings into mercurial progress"""
     def __init__(self, ui):
@@ -392,21 +394,26 @@ class GitHandler(object):
         commit.author_timezone = -timezone
 
         if 'committer' in extra:
-            # fixup timezone
-            (name, timestamp, timezone) = extra['committer'].rsplit(' ', 2)
-            commit.committer = name
-            commit.commit_time = timestamp
+            if RE_HGGIT_COMMITTER_LINE.search(extra['committer']):
+                # fixup timezone
+                (name, timestamp, timezone) = extra['committer'].rsplit(' ', 2)
+                commit.committer = name
+                commit.commit_time = timestamp
 
-            # work around a timezone format change
-            if int(timezone) % 60 != 0: #pragma: no cover
-                timezone = parse_timezone(timezone)
-                # Newer versions of Dulwich return a tuple here
-                if isinstance(timezone, tuple):
-                    timezone, neg_utc = timezone
-                    commit._commit_timezone_neg_utc = neg_utc
+                # work around a timezone format change
+                if int(timezone) % 60 != 0:  # pragma: no cover
+                    timezone = parse_timezone(timezone)
+                    # Newer versions of Dulwich return a tuple here
+                    if isinstance(timezone, tuple):
+                        timezone, neg_utc = timezone
+                        commit._commit_timezone_neg_utc = neg_utc
+                else:
+                    timezone = -int(timezone)
+                commit.commit_timezone = timezone
             else:
-                timezone = -int(timezone)
-            commit.commit_timezone = timezone
+                commit.committer = extra['committer']
+                commit.commit_time = commit.author_time
+                commit.commit_timezone = commit.author_timezone
         else:
             commit.committer = commit.author
             commit.commit_time = commit.author_time
@@ -875,7 +882,7 @@ class GitHandler(object):
             ctx = self.repo[rev]
             if getattr(ctx, 'bookmarks', None):
                 labels = lambda c: ctx.tags() + [
-                                fltr for fltr, bm 
+                                fltr for fltr, bm
                                 in self._filter_for_bookmarks(ctx.bookmarks())
                             ]
             else:
@@ -1018,7 +1025,7 @@ class GitHandler(object):
                 bms = bookmarks.parse(self.repo)
             else:
                 bms = self.repo._bookmarks
-            return dict([(filtered_bm, hex(bms[bm])) for 
+            return dict([(filtered_bm, hex(bms[bm])) for
                         filtered_bm, bm in self._filter_for_bookmarks(bms)])
         except AttributeError: #pragma: no cover
             return {}
@@ -1087,7 +1094,7 @@ class GitHandler(object):
                 real_branch_names = self.repo.branchmap()
                 bms = dict(
                     (
-                        bm_name + self.branch_bookmark_suffix 
+                        bm_name + self.branch_bookmark_suffix
                             if bm_name in real_branch_names
                         else bm_name,
                         bms[bm_name]
