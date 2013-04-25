@@ -32,8 +32,6 @@ from overlay import overlayrepo
 
 RE_GIT_AUTHOR = re.compile('^(.*?) ?\<(.*?)(?:\>(.*))?$')
 
-RE_GIT_SANITIZE_AUTHOR = re.compile('[<>\n]')
-
 RE_GIT_AUTHOR_EXTRA = re.compile('^(.*?)\ ext:\((.*)\) <(.*)\>$')
 
 # Test for git:// and git+ssh:// URI.
@@ -448,50 +446,7 @@ class GitHandler(object):
         return commit.id
 
     def get_valid_git_username_email(self, name):
-        r"""Sanitize usernames and emails to fit git's restrictions.
-
-        The following is taken from the man page of git's fast-import
-        command:
-
-            [...] Likewise LF means one (and only one) linefeed [...]
-
-            committer
-                The committer command indicates who made this commit,
-                and when they made it.
-
-                Here <name> is the person's display name (for example
-                "Com M Itter") and <email> is the person's email address
-                ("cm@example.com[1]"). LT and GT are the literal
-                less-than (\x3c) and greater-than (\x3e) symbols. These
-                are required to delimit the email address from the other
-                fields in the line. Note that <name> and <email> are
-                free-form and may contain any sequence of bytes, except
-                LT, GT and LF. <name> is typically UTF-8 encoded.
-
-        Accordingly, this function makes sure that there are none of the
-        characters <, >, or \n in any string which will be used for
-        a git username or email. Before this, it first removes left
-        angle brackets and spaces from the beginning, and right angle
-        brackets and spaces from the end, of this string, to convert
-        such things as " <john@doe.com> " to "john@doe.com" for
-        convenience.
-
-        TESTS:
-
-        >>> from mercurial.ui import ui
-        >>> g = GitHandler('', ui()).get_valid_git_username_email
-        >>> g('John Doe')
-        'John Doe'
-        >>> g('john@doe.com')
-        'john@doe.com'
-        >>> g(' <john@doe.com> ')
-        'john@doe.com'
-        >>> g('    <random<\n<garbage\n>  > > ')
-        'random???garbage?'
-        >>> g('Typo in hgrc >but.hg-git@handles.it.gracefully>')
-        'Typo in hgrc ?but.hg-git@handles.it.gracefully'
-        """
-        return RE_GIT_SANITIZE_AUTHOR.sub('?', name.lstrip('< ').rstrip('> '))
+        return name.lstrip('< ').rstrip('> ')
 
     def get_git_author(self, ctx):
         # hg authors might not have emails
@@ -504,8 +459,8 @@ class GitHandler(object):
         a = RE_GIT_AUTHOR.match(author)
 
         if a:
-            name = self.get_valid_git_username_email(a.group(1))
-            email = self.get_valid_git_username_email(a.group(2))
+            name = a.group(1)
+            email = a.group(2)
             if a.group(3) != None and len(a.group(3)) != 0:
                 name += ' ext:(' + urllib.quote(a.group(3)) + ')'
             author = self.get_valid_git_username_email(name) + ' <' + self.get_valid_git_username_email(email) + '>'
@@ -920,7 +875,7 @@ class GitHandler(object):
             ctx = self.repo[rev]
             if getattr(ctx, 'bookmarks', None):
                 labels = lambda c: ctx.tags() + [
-                                fltr for fltr, bm
+                                fltr for fltr, bm 
                                 in self._filter_for_bookmarks(ctx.bookmarks())
                             ]
             else:
@@ -1063,7 +1018,7 @@ class GitHandler(object):
                 bms = bookmarks.parse(self.repo)
             else:
                 bms = self.repo._bookmarks
-            return dict([(filtered_bm, hex(bms[bm])) for
+            return dict([(filtered_bm, hex(bms[bm])) for 
                         filtered_bm, bm in self._filter_for_bookmarks(bms)])
         except AttributeError: #pragma: no cover
             return {}
@@ -1132,7 +1087,7 @@ class GitHandler(object):
                 real_branch_names = self.repo.branchmap()
                 bms = dict(
                     (
-                        bm_name + self.branch_bookmark_suffix
+                        bm_name + self.branch_bookmark_suffix 
                             if bm_name in real_branch_names
                         else bm_name,
                         bms[bm_name]
